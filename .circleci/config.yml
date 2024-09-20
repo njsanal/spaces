@@ -82,6 +82,6 @@ workflows:
           cron: '* * * * *'  # This triggers the job every minute
           filters:
             branches:
-              only: master
+              only: main
     jobs:
       - wp-cron        
