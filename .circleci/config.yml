@@ -41,6 +41,38 @@ jobs:
   #           terminus auth:login --machine-token=-aMQ2TGOVAciSgO2Sz3-APoOpPNlDvcXF72BkRAh_Va1N
   #           terminus env:deploy ${PANTHEON_SITE}.${PANTHEON_ENV} --sync-content --cc --note="Testing Deployment via Circle CI"
 
+  refreshjob:
+    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/configuration-reference/#executor-job
+    docker:
+      - image: cimg/php:7.3.31-node
+    resource_class: medium
+    working_directory: ~/repo
+    environment:
+      PANTHEON_SITE: windsor-communities
+      PANTHEON_ENV: live
+    # Add steps to the job
+    # See: https://circleci.com/docs/configuration-reference/#steps
+    steps:
+      - checkout
+      - run:
+          name: "Refresh Cron"
+          command: "echo Cron Scheduling"
+      - run:
+          name: Install Terminus CLI
+          command: |
+            sudo apt-get update && sudo apt-get install -y php-cli php-curl php-xml git unzip rsync
+            sudo wget -O /usr/local/bin/terminus https://github.com/pantheon-systems/terminus/releases/download/3.1.5/terminus.phar
+            sudo chmod +x /usr/local/bin/terminus
+      - run:
+          name: Check for PHP DOMDocument
+          command: php -m | grep -i dom
+
+      - run:
+          name: Deploy code
+          command: |
+            terminus auth:login --machine-token=-aMQ2TGOVAciSgO2Sz3-APoOpPNlDvcXF72BkRAh_Va1N
+            terminus remote:wp ${PANTHEON_SITE}.${PANTHEON_ENV} action-scheduler run
 
   # New job to trigger wp-cron every minute
   wp-cron:
@@ -73,7 +105,15 @@ workflows:
   #     jobs:
   #       - windsor-deploy
 
-
+  refreshjob:
+      triggers:
+          - schedule:
+                cron: '10 * * * *'
+                filters:
+                    branches:
+                        only: master
+      jobs:
+        - refreshjob
 
 
   wp-cron-schedule:
